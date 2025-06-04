@@ -1,0 +1,126 @@
+import { NextResponse } from 'next/server';
+import connectDB from '@/app/api/lib/mongodb';
+import User from '@/app/api/models/User';
+import { authMiddleware } from '@/app/api/middleware/auth';
+
+// GET /api/user/profile - Get user profile
+export async function GET(request: Request) {
+  try {
+    // Apply auth middleware
+    const authResponse = await authMiddleware(request as any);
+    if (authResponse.status !== 200) {
+      return authResponse;
+    }
+
+    const userId = (request as any).headers.get('x-user-id');
+
+    // Connect to database
+    await connectDB();
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Return user data
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        bio: user.bio,
+        company: user.company,
+        jobTitle: user.jobTitle,
+        language: user.language || 'en',
+        timezone: user.timezone || 'utc',
+        notifications: user.notifications || {
+          email: {
+            surveyResponses: true,
+            surveyReports: true,
+            teamActivity: true,
+            productUpdates: true,
+            marketingEmails: false
+          },
+          inApp: {
+            surveyResponses: true,
+            teamActivity: true,
+            systemNotifications: true
+          },
+          push: {
+            enabled: false,
+            surveyResponses: false,
+            teamActivity: false
+          },
+          digestFrequency: 'daily'
+        }
+      }
+    });
+  } catch (error: any) {
+    console.error('Get profile error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/user/profile - Update user profile
+export async function PUT(request: Request) {
+  try {
+    // Apply auth middleware
+    const authResponse = await authMiddleware(request as any);
+    if (authResponse.status !== 200) {
+      return authResponse;
+    }
+
+    const userId = (request as any).headers.get('x-user-id');
+    const body = await request.json();
+
+    // Connect to database
+    await connectDB();
+
+    // Update user
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { ...body, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        bio: user.bio,
+        company: user.company,
+        jobTitle: user.jobTitle,
+        language: user.language,
+        timezone: user.timezone
+      }
+    });
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+} 
