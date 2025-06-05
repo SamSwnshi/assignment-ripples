@@ -183,31 +183,6 @@ export default function SurveyEditorPage() {
     setQuestions(items)
   }
 
-  // const handlePublish = () => {
-  //   // Save the survey to localStorage
-  //   const surveys = JSON.parse(localStorage.getItem("surveys") || "[]")
-  //   const newSurvey = {
-  //     id: `survey-${Date.now()}`,
-  //     title: surveyTitle,
-  //     description: surveyDescription,
-  //     questions,
-  //     status: "active",
-  //     responses: 0,
-  //     completionRate: 0,
-  //     created: new Date().toISOString().split("T")[0],
-  //     lastUpdated: new Date().toISOString().split("T")[0],
-  //   }
-
-  //   surveys.push(newSurvey)
-  //   localStorage.setItem("surveys", JSON.stringify(surveys))
-
-  //   toast({
-  //     title: "Survey Published!",
-  //     description: `Your survey has been published to the selected Shopify locations.`,
-  //   })
-  //   setPublishDialogOpen(false)
-  //   router.push("/surveys")
-  // }
   const handlePublish = async () => {
     try {
       const token = localStorage.getItem('token')
