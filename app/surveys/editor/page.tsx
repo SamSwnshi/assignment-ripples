@@ -183,31 +183,73 @@ export default function SurveyEditorPage() {
     setQuestions(items)
   }
 
-  const handlePublish = () => {
-    // Save the survey to localStorage
-    const surveys = JSON.parse(localStorage.getItem("surveys") || "[]")
-    const newSurvey = {
-      id: `survey-${Date.now()}`,
-      title: surveyTitle,
-      description: surveyDescription,
-      questions,
-      status: "active",
-      responses: 0,
-      completionRate: 0,
-      created: new Date().toISOString().split("T")[0],
-      lastUpdated: new Date().toISOString().split("T")[0],
+  // const handlePublish = () => {
+  //   // Save the survey to localStorage
+  //   const surveys = JSON.parse(localStorage.getItem("surveys") || "[]")
+  //   const newSurvey = {
+  //     id: `survey-${Date.now()}`,
+  //     title: surveyTitle,
+  //     description: surveyDescription,
+  //     questions,
+  //     status: "active",
+  //     responses: 0,
+  //     completionRate: 0,
+  //     created: new Date().toISOString().split("T")[0],
+  //     lastUpdated: new Date().toISOString().split("T")[0],
+  //   }
+
+  //   surveys.push(newSurvey)
+  //   localStorage.setItem("surveys", JSON.stringify(surveys))
+
+  //   toast({
+  //     title: "Survey Published!",
+  //     description: `Your survey has been published to the selected Shopify locations.`,
+  //   })
+  //   setPublishDialogOpen(false)
+  //   router.push("/surveys")
+  // }
+  const handlePublish = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/surveys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: surveyTitle,
+          description: surveyDescription,
+          questions
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Publish the survey
+        await fetch(`/api/surveys/${data.data.survey.id}/publish`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        toast({
+          title: "Survey Published!",
+          description: "Your survey is now live and collecting responses."
+        })
+        setPublishDialogOpen(false)
+        router.push("/surveys")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to publish survey. Please try again.",
+        variant: "destructive"
+      })
     }
-
-    surveys.push(newSurvey)
-    localStorage.setItem("surveys", JSON.stringify(surveys))
-
-    toast({
-      title: "Survey Published!",
-      description: `Your survey has been published to the selected Shopify locations.`,
-    })
-    setPublishDialogOpen(false)
-    router.push("/surveys")
   }
+
 
   const handleSaveAsDraft = () => {
     // Save the survey as draft to localStorage

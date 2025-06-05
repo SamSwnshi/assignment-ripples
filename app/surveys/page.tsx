@@ -33,6 +33,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
+import { apiClient, Survey } from "@/app/lib/api"
+import { useRouter } from "next/navigation"
 
 export default function MySurveysPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -40,139 +42,44 @@ export default function MySurveysPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const { toast } = useToast()
+  const router = useRouter()
 
-  // Mock data for surveys - now we'll load from localStorage if available
-  const [allSurveys, setAllSurveys] = useState([
-    {
-      id: "1",
-      title: "Product Satisfaction Survey",
-      description: "Collect feedback after customers use our product",
-      responses: 245,
-      completionRate: 68,
-      status: "active",
-      created: "2023-05-12",
-      lastUpdated: "2023-06-15",
-    },
-    {
-      id: "2",
-      title: "Customer Expectations Survey",
-      description: "Understand what customers expect before buying",
-      responses: 189,
-      completionRate: 72,
-      status: "active",
-      created: "2023-06-03",
-      lastUpdated: "2023-06-10",
-    },
-    {
-      id: "3",
-      title: "Website User Experience",
-      description: "Gather feedback about our website experience",
-      responses: 312,
-      completionRate: 85,
-      status: "active",
-      created: "2023-04-28",
-      lastUpdated: "2023-05-30",
-    },
-    {
-      id: "4",
-      title: "Product Feature Preferences",
-      description: "Learn which features customers value most",
-      responses: 0,
-      completionRate: 0,
-      status: "draft",
-      created: "2023-07-01",
-      lastUpdated: "2023-07-01",
-    },
-    {
-      id: "5",
-      title: "Delivery Experience Survey",
-      description: "Feedback on our delivery process",
-      responses: 178,
-      completionRate: 62,
-      status: "active",
-      created: "2023-05-20",
-      lastUpdated: "2023-06-02",
-    },
-    {
-      id: "6",
-      title: "Customer Support Satisfaction",
-      description: "Rate our customer support experience",
-      responses: 203,
-      completionRate: 75,
-      status: "active",
-      created: "2023-06-15",
-      lastUpdated: "2023-06-28",
-    },
-    {
-      id: "7",
-      title: "Brand Perception Study",
-      description: "Understand how customers perceive our brand",
-      responses: 156,
-      completionRate: 58,
-      status: "active",
-      created: "2023-03-10",
-      lastUpdated: "2023-04-15",
-    },
-    {
-      id: "8",
-      title: "Checkout Process Feedback",
-      description: "Evaluate the checkout experience on our website",
-      responses: 0,
-      completionRate: 0,
-      status: "draft",
-      created: "2023-07-05",
-      lastUpdated: "2023-07-05",
-    },
-    {
-      id: "9",
-      title: "Product Return Experience",
-      description: "Gather feedback about the return process",
-      responses: 87,
-      completionRate: 45,
-      status: "completed",
-      created: "2023-02-18",
-      lastUpdated: "2023-03-20",
-    },
-    {
-      id: "10",
-      title: "Email Marketing Effectiveness",
-      description: "Measure the impact of our email campaigns",
-      responses: 124,
-      completionRate: 52,
-      status: "completed",
-      created: "2023-01-25",
-      lastUpdated: "2023-02-28",
-    },
-  ])
+  // Use state to store surveys fetched from the API
+  const [allSurveys, setAllSurveys] = useState<Survey[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const [surveys, setSurveys] = useState(allSurveys)
 
-  // Load surveys from localStorage on component mount
+  // Fetch surveys from the API on component mount
   useEffect(() => {
-    const savedSurveys = localStorage.getItem("surveys")
-    if (savedSurveys) {
+    const fetchSurveys = async () => {
       try {
-        const parsedSurveys = JSON.parse(savedSurveys)
-        // Combine with default surveys
-        setAllSurveys((prev) => {
-          // Create a map of existing IDs to avoid duplicates
-          const existingIds = new Set(prev.map((s) => s.id))
-          // Filter out any saved surveys that might duplicate existing ones
-          const newSurveys = parsedSurveys.filter((s: any) => !existingIds.has(s.id))
-          return [...prev, ...newSurveys]
-        })
-      } catch (error) {
-        console.error("Error loading surveys from localStorage:", error)
+        setLoading(true)
+        const response = await apiClient.getSurveys()
+        console.log(response)
+        if (response.success) {
+          setAllSurveys(response.data)
+        } else {
+          setError(response.error || "Failed to fetch surveys")
+        }
+      } catch (err: any) {
+        setError(err.message || "An error occurred while fetching surveys")
+      } finally {
+        setLoading(false)
       }
     }
-  }, [])
+
+    fetchSurveys()
+  }, []) // Empty dependency array means this effect runs only once on mount
 
   // Filter surveys based on active tab
   useEffect(() => {
     if (activeTab === "all") {
       setSurveys(allSurveys)
     } else {
-      setSurveys(allSurveys.filter((survey) => survey.status === activeTab))
+      // Ensure status matching is case-insensitive and handles potential null/undefined statuses
+      setSurveys(allSurveys.filter((survey) => survey.status?.toLowerCase() === activeTab.toLowerCase()))
     }
   }, [activeTab, allSurveys])
 
@@ -180,7 +87,8 @@ export default function MySurveysPage() {
   const filteredSurveys = surveys.filter(
     (survey) =>
       survey.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      survey.description.toLowerCase().includes(searchQuery.toLowerCase()),
+      // Also search by description
+      (survey.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   const toggleSelectSurvey = (id: string) => {
@@ -196,32 +104,28 @@ export default function MySurveysPage() {
   }
 
   const deleteSurvey = (id: string) => {
-    // Remove from state
+    // This delete logic currently only updates local state. 
+    // For a real application, you would call an API delete method here.
     const updatedSurveys = allSurveys.filter((survey) => survey.id !== id)
     setAllSurveys(updatedSurveys)
     setSelectedSurveys(selectedSurveys.filter((surveyId) => surveyId !== id))
 
-    // Update localStorage
-    localStorage.setItem("surveys", JSON.stringify(updatedSurveys))
-
     toast({
       title: "Survey Deleted",
-      description: "The survey has been permanently deleted.",
+      description: "The survey has been removed from the list.",
     })
   }
 
   const deleteSelectedSurveys = () => {
-    // Remove from state
+    // This delete logic currently only updates local state.
+    // For a real application, you would call an API delete method here.
     const updatedSurveys = allSurveys.filter((survey) => !selectedSurveys.includes(survey.id))
     setAllSurveys(updatedSurveys)
     setSelectedSurveys([])
 
-    // Update localStorage
-    localStorage.setItem("surveys", JSON.stringify(updatedSurveys))
-
     toast({
       title: "Surveys Deleted",
-      description: `${selectedSurveys.length} surveys have been permanently deleted.`,
+      description: `${selectedSurveys.length} surveys have been removed from the list.`,
     })
   }
 
@@ -229,28 +133,35 @@ export default function MySurveysPage() {
     const surveyToDuplicate = allSurveys.find((survey) => survey.id === id)
     if (!surveyToDuplicate) return
 
-    const newSurvey = {
+    // Generate a unique temporary ID for the duplicated survey in the UI
+    const newSurveyId = `${Date.now()}`;
+
+    const newSurvey: Survey = {
       ...surveyToDuplicate,
-      id: `${Date.now()}`,
+      id: newSurveyId, // Assign the new temporary ID
       title: `${surveyToDuplicate.title} (Copy)`,
-      responses: 0,
-      completionRate: 0,
-      status: "draft",
-      created: format(new Date(), "yyyy-MM-dd"),
-      lastUpdated: format(new Date(), "yyyy-MM-dd"),
+      // Reset response related fields for the duplicate
+      responsesCount: 0,
+      status: "draft", // Duplicates should start as draft
+      createdAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ssZ"), // Use ISO format as per API example
+      updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ssZ"), // Use ISO format
+      publishedAt: undefined, // Duplicates are not published initially
+      // You might need to handle questions and settings duplication based on API capabilities
+      questions: [...surveyToDuplicate.questions], // Assuming questions can be copied directly
+      settings: surveyToDuplicate.settings ? { ...surveyToDuplicate.settings, endDate: undefined, responseLimit: undefined } : undefined // Copy settings, reset time-sensitive ones
     }
 
     // Update state
     const updatedSurveys = [...allSurveys, newSurvey]
     setAllSurveys(updatedSurveys)
 
-    // Update localStorage
-    localStorage.setItem("surveys", JSON.stringify(updatedSurveys))
-
     toast({
       title: "Survey Duplicated",
-      description: "A copy of the survey has been created as a draft.",
+      description: `"${newSurvey.title}" has been created.`,
     })
+
+    // Note: This duplication is only client-side for UI purposes.
+    // A real application would likely require an API call to duplicate the survey on the backend.
   }
 
   const getStatusBadge = (status: string) => {
@@ -264,6 +175,16 @@ export default function MySurveysPage() {
       default:
         return <Badge variant="outline">{status}</Badge>
     }
+  }
+
+  // Render loading state
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading surveys...</div>;
+  }
+
+  // Render error state
+  if (error) {
+    return <div className="flex items-center justify-center min-h-screen text-red-500">Error: {error}</div>;
   }
 
   return (
@@ -417,23 +338,23 @@ export default function MySurveysPage() {
                       />
                       <div>
                         <div className="font-medium">{survey.title}</div>
-                        <div className="text-sm text-muted-foreground">{survey.description}</div>
+                        {survey.description && <div className="text-sm text-muted-foreground">{survey.description}</div>}
                       </div>
                     </div>
                   </td>
-                  <td className="p-3">{getStatusBadge(survey.status)}</td>
+                  <td className="p-3">{getStatusBadge(survey.status || '')}</td>
                   <td className="p-3">
-                    <div className="flex items-center gap-1">
-                      {survey.responses > 0 ? (
+                    {survey.responsesCount !== undefined ? (
+                      <div className="flex items-center gap-1">
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span>{survey.responses}</span>
-                    </div>
+                        <span>{survey.responsesCount}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">N/A</span>
+                    )}
                   </td>
                   <td className="p-3">
-                    {survey.responses > 0 ? (
+                    {survey.responsesCount !== undefined ? (
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
@@ -450,23 +371,23 @@ export default function MySurveysPage() {
                   <td className="p-3">
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{survey.created}</span>
+                      <span className="text-sm">{survey.createdAt ? format(new Date(survey.createdAt), "MMM dd, yyyy") : 'N/A'}</span>
                     </div>
                   </td>
-                  <td className="p-3 text-sm">{survey.lastUpdated}</td>
+                  <td className="p-3 text-sm">{survey.updatedAt ? format(new Date(survey.updatedAt), "MMM dd, yyyy") : 'N/A'}</td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/surveys/edit/${survey.id}`}>
+                        <Link href={`/surveys/editor?id=${survey.id}`}>
                           <Pencil className="h-4 w-4" />
                         </Link>
                       </Button>
                       <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/surveys/preview/${survey.id}`}>
-                          <Eye className="h-4 w-4" />
+                        <Link href={`/surveys/analytics/${survey.id}`}>
+                          <BarChart3 className="h-4 w-4" />
                         </Link>
                       </Button>
-                      {survey.responses > 0 && (
+                      {survey.responsesCount !== undefined && (
                         <Button variant="ghost" size="icon" asChild>
                           <Link href={`/surveys/results/${survey.id}`}>
                             <BarChart3 className="h-4 w-4" />
@@ -480,12 +401,12 @@ export default function MySurveysPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => duplicateSurvey(survey.id)}>
+                          <DropdownMenuItem onSelect={() => duplicateSurvey(survey.id)}>
                             <Copy className="mr-2 h-4 w-4" />
                             <span>Duplicate</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => deleteSurvey(survey.id)} className="text-red-500">
+                          <DropdownMenuItem onSelect={() => deleteSurvey(survey.id)} className="text-red-600 focus:text-red-600">
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Delete</span>
                           </DropdownMenuItem>

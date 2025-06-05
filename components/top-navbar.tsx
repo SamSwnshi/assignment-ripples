@@ -31,16 +31,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import HelpVideoModal from "@/components/help-video-modal"
+import { useAuth } from "@/app/contexts/AuthContext"
 
 export default function TopNavbar() {
   const pathname = usePathname()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
+    const { logout, user } = useAuth()
 
   // Don't show navbar on login page
   if (pathname === "/login") {
     return null
+  }
+  let auth = null
+  try {
+    auth = useAuth()
+  } catch (error) {
+    console.warn('Auth context not available:', error)
+  }
+
+
+   const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const navItems = [
@@ -173,9 +190,9 @@ export default function TopNavbar() {
                 <Button variant="ghost" className="h-8 gap-2 pl-2">
                   <Avatar className="h-6 w-6">
                     <AvatarImage src="/placeholder-user.jpg" />
-                    <AvatarFallback>JD</AvatarFallback>
+                     <AvatarFallback>{auth?.user?.name?.[0] || 'U'}</AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline-block">John Doe</span>
+                  <span className="hidden md:inline-block">{auth?.user?.name || 'User'}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -185,7 +202,7 @@ export default function TopNavbar() {
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

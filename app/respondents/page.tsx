@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -66,416 +66,46 @@ export default function RespondentsPage() {
   const [newSegmentName, setNewSegmentName] = useState("")
   const [newSegmentDescription, setNewSegmentDescription] = useState("")
   const [selectedSegment, setSelectedSegment] = useState<any | null>(null)
+  const [respondents, setRespondents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for respondents
-  const respondents = [
-    {
-      id: "1",
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      avatar: "/diverse-person-portrait.png",
-      location: "United States",
-      surveys: 5,
-      lastActive: "2 days ago",
-      tags: ["Customer", "Premium"],
-      completionRate: 92,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 12, 2023",
-          status: "completed",
+  useEffect(() => {
+    fetchRespondents()
+  }, [])
+
+  const fetchRespondents = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No authentication token found");
+        return;
+      }
+
+      const response = await fetch("/api/respondents", {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 28, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 15, 2023",
-          status: "completed",
-        },
-        {
-          id: "s4",
-          title: "Email Marketing Effectiveness",
-          date: "Mar 10, 2023",
-          status: "completed",
-        },
-        {
-          id: "s5",
-          title: "Brand Perception Study",
-          date: "Feb 05, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 4.2,
-        npsScore: 8,
-        mostUsedFeatures: ["Feature A", "Feature C"],
-        referralSource: "Social Media",
-      },
-    },
-    {
-      id: "2",
-      name: "Sarah Williams",
-      email: "sarah.williams@example.com",
-      avatar: "/sarah-williams-portrait.png",
-      location: "United Kingdom",
-      surveys: 3,
-      lastActive: "1 week ago",
-      tags: ["Customer"],
-      completionRate: 100,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 11, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 20, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 05, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 4.8,
-        npsScore: 10,
-        mostUsedFeatures: ["Feature A"],
-        referralSource: "Friend/Family",
-      },
-    },
-    {
-      id: "3",
-      name: "Michael Brown",
-      email: "michael.brown@example.com",
-      avatar: "/michael-brown-memorial.png",
-      location: "Canada",
-      surveys: 4,
-      lastActive: "3 days ago",
-      tags: ["Customer", "Beta Tester"],
-      completionRate: 75,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 10, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 15, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 01, 2023",
-          status: "abandoned",
-        },
-        {
-          id: "s4",
-          title: "Email Marketing Effectiveness",
-          date: "Mar 05, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 3.5,
-        npsScore: 6,
-        mostUsedFeatures: ["Feature B"],
-        referralSource: "Advertisement",
-      },
-    },
-    {
-      id: "4",
-      name: "Emily Davis",
-      email: "emily.davis@example.com",
-      avatar: "/emily-davis-portrait.png",
-      location: "Australia",
-      surveys: 2,
-      lastActive: "5 days ago",
-      tags: ["Customer"],
-      completionRate: 100,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 09, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 10, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 4.0,
-        npsScore: 9,
-        mostUsedFeatures: ["Feature A"],
-        referralSource: "Search Engine",
-      },
-    },
-    {
-      id: "5",
-      name: "David Wilson",
-      email: "david.wilson@example.com",
-      avatar: "/david-wilson-portrait.png",
-      location: "Germany",
-      surveys: 5,
-      lastActive: "1 day ago",
-      tags: ["Customer", "Premium", "Beta Tester"],
-      completionRate: 80,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 08, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 25, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 20, 2023",
-          status: "completed",
-        },
-        {
-          id: "s4",
-          title: "Email Marketing Effectiveness",
-          date: "Mar 15, 2023",
-          status: "abandoned",
-        },
-        {
-          id: "s5",
-          title: "Brand Perception Study",
-          date: "Feb 10, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 4.5,
-        npsScore: 10,
-        mostUsedFeatures: ["Feature C"],
-        referralSource: "Social Media",
-      },
-    },
-    {
-      id: "6",
-      name: "Olivia Martinez",
-      email: "olivia.martinez@example.com",
-      avatar: "/olivia-martinez.png",
-      location: "Spain",
-      surveys: 3,
-      lastActive: "4 days ago",
-      tags: ["Customer"],
-      completionRate: 67,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 07, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 18, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 10, 2023",
-          status: "abandoned",
-        },
-      ],
-      responseData: {
-        avgRating: 4.0,
-        npsScore: 8,
-        mostUsedFeatures: ["Feature B"],
-        referralSource: "Friend/Family",
-      },
-    },
-    {
-      id: "7",
-      name: "James Taylor",
-      email: "james.taylor@example.com",
-      avatar: "/singer-songwriter-acoustic-guitar.png",
-      location: "France",
-      surveys: 2,
-      lastActive: "1 week ago",
-      tags: ["Customer"],
-      completionRate: 50,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 06, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 12, 2023",
-          status: "abandoned",
-        },
-      ],
-      responseData: {
-        avgRating: 3.0,
-        npsScore: 7,
-        mostUsedFeatures: ["Feature A"],
-        referralSource: "Advertisement",
-      },
-    },
-    {
-      id: "8",
-      name: "Sophia Anderson",
-      email: "sophia.anderson@example.com",
-      avatar: "/sophia-anderson.png",
-      location: "Italy",
-      surveys: 4,
-      lastActive: "2 days ago",
-      tags: ["Customer", "Premium"],
-      completionRate: 100,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 05, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 22, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 18, 2023",
-          status: "completed",
-        },
-        {
-          id: "s4",
-          title: "Email Marketing Effectiveness",
-          date: "Mar 12, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 5.0,
-        npsScore: 9,
-        mostUsedFeatures: ["Feature C"],
-        referralSource: "Search Engine",
-      },
-    },
-    {
-      id: "9",
-      name: "Daniel Garcia",
-      email: "daniel.garcia@example.com",
-      avatar: "/daniel-garcia-portrait.png",
-      location: "Mexico",
-      surveys: 3,
-      lastActive: "3 days ago",
-      tags: ["Customer", "Beta Tester"],
-      completionRate: 100,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 04, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 19, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 14, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 4.0,
-        npsScore: 8,
-        mostUsedFeatures: ["Feature B"],
-        referralSource: "Social Media",
-      },
-    },
-    {
-      id: "10",
-      name: "Emma Thompson",
-      email: "emma.thompson@example.com",
-      avatar: "/emma-thompson-portrait.png",
-      location: "United States",
-      surveys: 5,
-      lastActive: "1 day ago",
-      tags: ["Customer", "Premium"],
-      completionRate: 100,
-      surveyHistory: [
-        {
-          id: "s1",
-          title: "Customer Satisfaction Survey",
-          date: "Jun 03, 2023",
-          status: "completed",
-        },
-        {
-          id: "s2",
-          title: "Product Feedback Survey",
-          date: "May 27, 2023",
-          status: "completed",
-        },
-        {
-          id: "s3",
-          title: "Website User Experience",
-          date: "Apr 22, 2023",
-          status: "completed",
-        },
-        {
-          id: "s4",
-          title: "Email Marketing Effectiveness",
-          date: "Mar 17, 2023",
-          status: "completed",
-        },
-        {
-          id: "s5",
-          title: "Brand Perception Study",
-          date: "Feb 12, 2023",
-          status: "completed",
-        },
-      ],
-      responseData: {
-        avgRating: 5.0,
-        npsScore: 10,
-        mostUsedFeatures: ["Feature A"],
-        referralSource: "Friend/Family",
-      },
-    },
-  ]
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      if (data.success) {
+        console.log("Respondents data:", data.data.respondents);
+        setRespondents(data.data.respondents);
+      } else {
+        console.error("Failed to fetch respondents:", data.error);
+      }
+    } catch (error) {
+      console.error("Failed to fetch respondents:", error);
+    }
+  };
 
   // Mock data for segments
   const segments = [
