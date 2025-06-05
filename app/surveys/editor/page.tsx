@@ -224,7 +224,7 @@ export default function SurveyEditorPage() {
       })
     }
   }
-
+ 
 
   const handleSaveAsDraft = () => {
     // Save the survey as draft to localStorage
